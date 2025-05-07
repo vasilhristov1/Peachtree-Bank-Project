@@ -1,0 +1,6 @@
+@peachtree_bank_backend_HostAddress = http://localhost:5209
+
+GET {{peachtree_bank_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
