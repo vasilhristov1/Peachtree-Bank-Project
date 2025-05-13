@@ -1,44 +1,99 @@
-var builder = WebApplication.CreateBuilder(args);
+using System.Text;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using peachtree_bank_backend;
+using peachtree_bank_backend.Data;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+namespace peachtree_bank_backend;
 
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public class Program
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    private static readonly string PeachtreeCorsPolicy = "PeachtreeCorsPolicy";
 
-app.UseHttpsRedirection();
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+        builder.Services.AddDbContext<MainContext>(options =>
+        {
+            var connectionString = builder.Configuration.GetConnectionString("MainConnectionString");
+            options.UseSqlServer(connectionString);
+        });
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+        builder
+            .Services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
 
-app.Run();
+        builder.Services.AddEndpointsApiExplorer();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        builder.Services.AddSwagger();
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy(
+                PeachtreeCorsPolicy,
+                policy =>
+                {
+                    policy
+                        .SetIsOriginAllowedToAllowWildcardSubdomains()
+                        .SetIsOriginAllowed(origin =>
+                            new Uri(origin).Host is "localhost"
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .WithExposedHeaders("Content-Disposition");
+                }
+            );
+        });
+
+        builder.Services.AddRequestTimeouts(options =>
+        {
+            options.DefaultPolicy = new RequestTimeoutPolicy { Timeout = TimeSpan.FromMinutes(5) };
+            options.AddPolicy("PeachtreePolicy", TimeSpan.FromMinutes(5));
+        });
+
+        builder.Services.AddRepositories();
+        builder.Services.AddManagers();
+        builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
+        
+        var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+        builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+                };
+            });
+
+        var app = builder.Build();
+
+        app.UseSwagger();
+        app.UseSwaggerUI();
+
+        app.UseCors(PeachtreeCorsPolicy);
+        
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        app.Run();
+    }
 }

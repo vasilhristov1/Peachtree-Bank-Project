@@ -1,0 +1,49 @@
+# .NET
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ASP.NET Core specific
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+*.db
+*.log
+
+# .NET Publish output
+publish/
+
+# User-specific files
+*.user
+*.userosscache
+
+# React / Vite
+/node_modules/
+/dist/
+/build/
+/public/vite.svg
+.env.local
+.env.*.local
+
+# IDEs and Editor-specific
+/.idea/
+/.vscode/
+
+# Operating System specific
+.DS_Store
+Thumbs.db
+
+# Windows Installer Files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# MacOS specific
+*.swp

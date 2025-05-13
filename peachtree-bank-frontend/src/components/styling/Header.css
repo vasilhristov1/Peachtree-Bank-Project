@@ -1,0 +1,20 @@
+/* Header.css */
+.header {
+    display: flex;
+    align-items: center;
+    background-color: rgb(6, 147, 119);
+    padding: 10px;
+  }
+  
+  .header .MuiSvgIcon-root {
+    margin-right: 10px;
+    color: white;
+  }
+  
+  .header .MuiTypography-root {
+    color: white;
+    flex-grow: 1;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  
